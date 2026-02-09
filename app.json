@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F172A"
-      }
+      },
+      "package": "com.manuel.gestionespese"
     },
     "web": {
       "bundler": "metro",
@@ -27,6 +28,12 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "daf47c1c-334e-4917-b3c6-7ed53648d5aa"
+      }
+    }
   }
 }

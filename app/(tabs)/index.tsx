@@ -1,25 +1,71 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Colors, Spacing, BorderRadius } from '../../constants/Design';
-import { Wallet, ArrowDownCircle, ArrowUpCircle, PiggyBank, TrendingUp, Inbox } from 'lucide-react-native';
-import { CATEGORIES } from '../../constants/MockData';
-import { useStore, useTotals } from '../../store/useStore';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, PiggyBank, Settings, Inbox, TrendingUp } from 'lucide-react-native';
+import { useStore, useTotals, parseITDate, getIcon } from '../../store/useStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function DashboardScreen() {
     const theme = Colors.dark;
+    const insets = useSafeAreaInsets();
+    const router = useRouter();
     const { balance, income, expenses, savings } = useTotals();
     const transactions = useStore((state) => state.transactions);
+    const categories = useStore((state) => state.categories);
+    const monthlyLimit = useStore((state) => state.monthlyLimit);
 
-    const recentTransactions = transactions.slice(0, 5);
+    const now = new Date();
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const currentMonthExpenses = transactions
+        .filter(t => {
+            const d = parseITDate(t.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.type === 'expense';
+        })
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    const budgetProgress = Math.min(currentMonthExpenses / monthlyLimit, 1);
+    const budgetColor = budgetProgress > 0.9 ? theme.danger : budgetProgress > 0.7 ? theme.warning : theme.success;
+
+    const recentTransactions = transactions
+        .filter(t => parseITDate(t.date) <= today)
+        .slice(0, 5);
+
     const savingsPercentage = income > 0 ? ((savings / income) * 100).toFixed(0) : '0';
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.greeting, { color: theme.textMuted }]}>Bentornato, Manuel</Text>
-                <Text style={[styles.title, { color: theme.text }]}>Il tuo Bilancio</Text>
+            <View style={[styles.header, { marginTop: insets.top + Spacing.md }]}>
+                <View>
+                    <Text style={[styles.greeting, { color: theme.textMuted }]}>Bentornato, Manuel</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Il tuo Bilancio</Text>
+                </View>
+                <TouchableOpacity
+                    onPress={() => router.push('/settings')}
+                    style={[styles.settingsButton, { backgroundColor: theme.card }]}>
+                    <Settings color={theme.primary} size={20} />
+                </TouchableOpacity>
             </View>
 
-            <View style={[styles.mainCard, { backgroundColor: theme.primary }]}>
+            {/* ... stats cards ... */}
+
+            <View style={[styles.budgetCard, { backgroundColor: theme.card }]}>
+                <View style={styles.budgetHeader}>
+                    <Text style={[styles.statsLabel, { color: theme.textMuted }]}>Budget Mensile</Text>
+                    <Text style={[styles.budgetValue, { color: theme.text }]}>
+                        € {currentMonthExpenses.toLocaleString('it-IT')} / € {monthlyLimit.toLocaleString('it-IT')}
+                    </Text>
+                </View>
+                <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
+                    <View style={[styles.progressBarFill, { backgroundColor: budgetColor, width: `${budgetProgress * 100}%` }]} />
+                </View>
+                <Text style={[styles.budgetStatus, { color: budgetColor }]}>
+                    {budgetProgress >= 1 ? 'Budget superato!' : `${((1 - budgetProgress) * 100).toFixed(0)}% rimanente`}
+                </Text>
+            </View>
+
+            <View style={[styles.mainCard, { backgroundColor: balance >= 0 ? theme.primary : theme.danger }]}>
                 <View style={styles.cardHeader}>
                     <Wallet color="white" size={24} />
                     <Text style={styles.cardTitle}>Saldo Attuale</Text>
@@ -66,12 +112,12 @@ export default function DashboardScreen() {
                     </View>
                 ) : (
                     recentTransactions.map((item) => {
-                        const category = CATEGORIES.find(c => c.id === item.categoryId);
-                        const Icon = category?.icon || Wallet;
+                        const category = categories.find(c => c.id === item.categoryId) || categories[0];
+                        const CategoryIcon = getIcon(category.iconName);
                         return (
                             <View key={item.id} style={[styles.listItem, { backgroundColor: theme.card }]}>
-                                <View style={[styles.iconBox, { backgroundColor: (category?.color || theme.border) + '20' }]}>
-                                    <Icon color={category?.color || theme.text} size={20} />
+                                <View style={[styles.iconBox, { backgroundColor: category.color + '20' }]}>
+                                    <CategoryIcon color={category.color} size={20} />
                                 </View>
                                 <View style={styles.listItemContent}>
                                     <Text style={[styles.listItemTitle, { color: theme.text }]}>{item.title}</Text>
@@ -95,8 +141,18 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
     },
     header: {
-        marginTop: Spacing.lg,
-        marginBottom: Spacing.xl,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: Spacing.md,
+    },
+    settingsButton: {
+        width: 44,
+        height: 44,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     greeting: {
         fontSize: 14,
@@ -243,5 +299,34 @@ const styles = StyleSheet.create({
     listItemAmount: {
         fontSize: 16,
         fontWeight: '700',
+    },
+    budgetCard: {
+        padding: Spacing.md,
+        borderRadius: BorderRadius.lg,
+        marginBottom: Spacing.xl,
+        gap: Spacing.sm,
+    },
+    budgetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    budgetValue: {
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    budgetStatus: {
+        fontSize: 11,
+        fontWeight: '600',
+        textAlign: 'right',
+    },
+    progressBarBg: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 4,
     },
 });

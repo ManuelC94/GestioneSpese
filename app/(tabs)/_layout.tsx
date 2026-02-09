@@ -1,54 +1,72 @@
-import { Tabs } from 'expo-router';
+import { withLayoutContext } from 'expo-router';
+import { createMaterialTopTabNavigator, MaterialTopTabNavigationOptions } from '@react-navigation/material-top-tabs';
 import { Home, PlusCircle, History } from 'lucide-react-native';
 import { Colors } from '../../constants/Design';
+import { View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const { Navigator } = createMaterialTopTabNavigator();
+
+const MaterialTopTabs = withLayoutContext(Navigator);
 
 export default function TabLayout() {
     const theme = Colors.dark;
+    const insets = useSafeAreaInsets();
 
     return (
-        <Tabs
+        <MaterialTopTabs
+            tabBarPosition="bottom"
             screenOptions={{
                 tabBarActiveTintColor: theme.primary,
                 tabBarInactiveTintColor: theme.textMuted,
+                tabBarIndicatorStyle: {
+                    backgroundColor: 'transparent', // Remove the top indicator
+                },
                 tabBarStyle: {
                     backgroundColor: theme.card,
                     borderTopColor: theme.border,
-                    height: 60,
-                    paddingBottom: 8,
+                    borderTopWidth: 1,
+                    height: 65 + (insets.bottom > 0 ? insets.bottom : 10),
+                    paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+                    paddingTop: 8,
+                    elevation: 0,
+                    shadowOpacity: 0,
                 },
-                headerStyle: {
-                    backgroundColor: theme.background,
+                tabBarLabelStyle: {
+                    fontSize: 11,
+                    fontWeight: '700',
+                    textTransform: 'none',
+                    marginBottom: 5,
                 },
-                headerTitleStyle: {
-                    color: theme.text,
-                    fontWeight: 'bold',
-                },
-                headerShadowVisible: false,
+                tabBarShowIcon: true,
+                tabBarPressColor: theme.primary + '20',
+                lazy: true,
+                swipeEnabled: true,
             }}>
-            <Tabs.Screen
+            <MaterialTopTabs.Screen
                 name="index"
                 options={{
                     title: 'Bilancio',
                     tabBarLabel: 'Home',
-                    tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+                    tabBarIcon: ({ color }) => <Home size={22} color={color} />,
                 }}
             />
-            <Tabs.Screen
+            <MaterialTopTabs.Screen
                 name="add"
                 options={{
                     title: 'Nuova Spesa',
                     tabBarLabel: 'Aggiungi',
-                    tabBarIcon: ({ color, size }) => <PlusCircle size={size} color={color} />,
+                    tabBarIcon: ({ color }) => <PlusCircle size={22} color={color} />,
                 }}
             />
-            <Tabs.Screen
+            <MaterialTopTabs.Screen
                 name="history"
                 options={{
                     title: 'Storico',
                     tabBarLabel: 'Storico',
-                    tabBarIcon: ({ color, size }) => <History size={size} color={color} />,
+                    tabBarIcon: ({ color }) => <History size={22} color={color} />,
                 }}
             />
-        </Tabs>
+        </MaterialTopTabs>
     );
 }
